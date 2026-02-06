@@ -42,14 +42,10 @@ class GoogleDriver extends BaseDriver implements Driver {
     try {
       const response = await drive.files.list({
         q: `'${folderId}' in parents and trashed = false`,
-        fields: 'files(id, name, mimeType, fileExtension)',
+        fields: 'files(id, name, mimeType, fileExtension, webViewLink)',
         supportsAllDrives: true, 
         includeItemsFromAllDrives: true,
       });
-
-      console.log(response.status);
-      console.log(response.data);
-      console.log(response.data.files);
 
       const files = response.data.files;
 
@@ -63,8 +59,8 @@ class GoogleDriver extends BaseDriver implements Driver {
         return {
           id: file.id,
           name: file.name!,
-          ext: file.fileExtension ? `.${file.fileExtension}` : '',
-          path: file.id!,
+          ext: file.fileExtension ? `${file.fileExtension}` : '',
+          path: (isFolder ? file.webViewLink : file.id ) ,
           type: (isFolder ? 'folder' : 'file') as UploadType
         };
       });

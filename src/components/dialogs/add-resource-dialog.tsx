@@ -18,17 +18,26 @@ function AddResourceDialog() {
   const [open, setOpen] = useState(false);
 
   const uploadForm = useForm({
-    resolver: zodResolver(QueueSchema)
+    resolver: zodResolver(QueueSchema),
+    defaultValues: {
+      type: 'local'
+    }
   });
 
   const uploadType = uploadForm.watch('type');
 
   const importForm = useForm({
-    resolver: zodResolver(ImportSchema)
+    resolver: zodResolver(ImportSchema),
+    defaultValues: {
+      type: 'google-drive'
+    }
   });
 
   const downloadForm = useForm({
-    resolver: zodResolver(QueueSchema)
+    resolver: zodResolver(QueueSchema),
+    defaultValues: {
+      type: 'google-drive'
+    }
   });
 
   const onUploadSubmit = (values: ResourceData) => {
@@ -217,7 +226,6 @@ function AddResourceDialog() {
                 <FormField
                   control={downloadForm.control}
                   name="type"
-                  defaultValue='google-drive'
                   render={({ field }: any) => (
                     <FormItem>
                       <RadioGroup
@@ -283,7 +291,6 @@ function AddResourceDialog() {
                 <FormField
                   control={importForm.control}
                   name="type"
-                  defaultValue='google-drive'
                   render={({ field }: any) => (
                     <FormItem>
                       <RadioGroup
