@@ -15,8 +15,6 @@ import { browse, setData } from '@/lib/utils';
 
 function Settings() {
   const [settings, setSettings] = useState({
-    trove_api_key: '',
-    trove_api_url: '',
     gdrive_client_id: '',
     gdrive_client_secret: '',
     gdrive_refresh_token: '',
@@ -37,13 +35,13 @@ function Settings() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();    
-    console.log(settings);
     await window.api.store.save(settings);
   }
   
   async function getGoogleToken() {
     const res = await window.api.oauth.googleToken(settings.gdrive_client_id, settings.gdrive_client_secret);
     if (res) load();
+    location.reload();
   }
 
   return (

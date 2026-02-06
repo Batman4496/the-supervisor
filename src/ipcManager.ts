@@ -4,7 +4,7 @@ import QueueManager from "@/services/queue-manager";
 import DBService from "@/services/db-serivce";
 import ManifestService from "./services/manifest-service";
 import { assetPath } from "./lib/helpers";
-import { DriverType, FileRecord, FileSearchData, ManifestData, ResourceRecord } from "./types";
+import { DriverType, FileRecord, FileSearchData, ImportData, ResourceRecord } from "./types";
 import { authenticate } from "./services/oauth/GoogleOAuth";
 import DriverManager from "./services/driver-manager";
 
@@ -108,7 +108,7 @@ export default function (mainWindow: BrowserWindow, store: Store, database: DBSe
     }
   });
 
-  ipcMain.handle('manifest:import', async (_, data: ManifestData) => {
+  ipcMain.handle('manifest:import', async (_, data: ImportData) => {
     try {
       const service = new ManifestService(database, store);
       const res = await service.importManifest(data);

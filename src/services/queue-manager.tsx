@@ -252,6 +252,7 @@ class QueueManager {
 
       this.remove(item.id);
       this.mainWindow.webContents.send('queue:sync', [...this.queue, ...this.finishedQueue]);
+      this.mainWindow.webContents.send('resource:new', await this.db.allResource());
       this.work();
     } catch (err) {
       if (this.current) {
