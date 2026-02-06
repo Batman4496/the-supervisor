@@ -10,7 +10,9 @@ import AutoUnpackNativesPlugin from '@electron-forge/plugin-auto-unpack-natives'
 
 const config: ForgeConfig = {
   packagerConfig: {
-    asar: true,
+    asar: {
+      unpack: "**/public/**"
+    },
     ignore:[ /node_modules\/(?!(sqlite|sqlite3|bindings|file-uri-to-path)\/)/, ],
     icon: './public/logo'
   },

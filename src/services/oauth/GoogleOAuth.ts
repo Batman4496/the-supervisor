@@ -36,7 +36,6 @@ export async function authenticate(clientId: string, clientSecret: string, store
                 server.close();
             }
         } catch (e) {
-            console.log(e);
             res.end('Authentication failed.');
             server.close();
         }

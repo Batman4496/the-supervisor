@@ -4,6 +4,7 @@ import BaseDriver from "./base-driver";
 import { Driver, FileRecord, UploadType } from "@/types";
 import { google } from 'googleapis';
 import { randomInt } from "crypto";
+import { finished } from "stream/promises";
 
 class GoogleDriver extends BaseDriver implements Driver {
   #access_token?: string;
@@ -60,7 +61,7 @@ class GoogleDriver extends BaseDriver implements Driver {
           id: file.id,
           name: file.name!,
           ext: file.fileExtension ? `${file.fileExtension}` : '',
-          path: (isFolder ? file.webViewLink : file.id ) ,
+          path: (isFolder ? file.webViewLink! : file.id! ) ,
           type: (isFolder ? 'folder' : 'file') as UploadType
         };
       });
@@ -90,10 +91,9 @@ class GoogleDriver extends BaseDriver implements Driver {
 
     if (type === 'folder') {
       const fileMetadata = {
-        name: name, // Fixed: was 'name'
+        name: name,
         mimeType: 'application/vnd.google-apps.folder',
         parents: [folderId]
-        // parents: [to] // Uncomment if 'to' is a Google Drive Folder ID
       };
 
       const folder = await drive.files.create({
@@ -149,32 +149,14 @@ class GoogleDriver extends BaseDriver implements Driver {
       { responseType: 'stream' }
     );
 
-    await new Promise((resolve, reject) => {
-        response.data
-          .on('error', (err) => {
-            stream.close();
-            fsSync.unlink(targetPath, () => {});
-            reject(err);
-          })
-          .pipe(stream)
-          .on('finish', async () => {
-             
-            file.downloadPath = targetPath;
-            file.downloaded = true;
-            await this.queueManager?.db.updateFile(file.id, {
-              downloadPath: targetPath,
-              downloaded: true
-            });
-            
-            resolve("done");
-          })
-          .on('error', (err) => {
-            fsSync.unlink(targetPath, () => {}); 
-            reject(err);
-          });
-      });
+    response.data.pipe(stream);
 
-    return await this.queueManager?.db.getFile(file.id) ?? file;
+    await finished(stream);
+
+    file.downloadPath = targetPath;
+    file.downloaded = true;
+
+    return await file;
   }
 
 }

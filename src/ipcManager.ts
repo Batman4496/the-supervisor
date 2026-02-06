@@ -87,6 +87,12 @@ export default function (mainWindow: BrowserWindow, store: Store, database: DBSe
   
       const driver = DriverManager.run(resource.type, store);
       const download = await driver.download(file, resource.downloadPath);
+      
+      await database.updateFile(file.id, {
+        downloadPath: file.downloadPath,
+        downloaded: file.downloaded
+      });
+
       return download;
     } catch (err) {
       mainWindow.webContents.send('error', err);
@@ -133,7 +139,7 @@ export default function (mainWindow: BrowserWindow, store: Store, database: DBSe
   ipcMain.handle('drag:start', (event, path: string) => {
     event.sender.startDrag({
       file: path,
-    icon: assetPath('file.png')
+      icon: assetPath('file.png')
     });
   });
 }

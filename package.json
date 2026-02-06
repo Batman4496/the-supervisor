@@ -12,7 +12,7 @@
     "lint": "eslint --ext .ts,.tsx ."
   },
   "keywords": [],
-  "author": "as",
+  "author": "Batman4496",
   "license": "MIT",
   "devDependencies": {
     "@electron-forge/cli": "^7.9.0",

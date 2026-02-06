@@ -1,9 +1,8 @@
+import { app } from "electron";
 import path from "path";
 
 export function assetPath(p: string) {
-  if (process.env.NODE_ENV === 'development') {
-    return path.join(__dirname, '..', '..', 'public', p);
-  } else {
-    return path.join(__dirname, '..', '..', p); 
-  }
+  return app.isPackaged
+    ? path.join(process.resourcesPath, 'app.asar.unpacked', 'public', p)
+    : path.join(app.getAppPath(), 'public', p);
 };
