@@ -1,6 +1,6 @@
 import { DriverType, Service } from "@/types";
 
-export const APP_NAME = "Supervisor";
+export const APP_NAME = "The Supervisor";
 export const SERVICES: Service[] = [
   { id: 'local', name: 'Local', description: ''},
   { id: 'google-drive', name: 'Google Drive', description: ''},
