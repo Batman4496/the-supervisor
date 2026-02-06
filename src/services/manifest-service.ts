@@ -7,6 +7,7 @@ import path from "path";
 import Store from "electron-store";
 import DriverManager from "./driver-manager";
 import os from "os";
+import { APP_NAME } from "@/lib/constants";
 
 class ManifestService {
   db: DBService;
@@ -83,7 +84,7 @@ class ManifestService {
 
     await Promise.all(promises);
 
-    const fileName = `trove-manifest-${crypto.randomBytes(5).toString('hex')}.json`;
+    const fileName = `${APP_NAME}-manifest-${crypto.randomBytes(5).toString('hex')}.json`;
 
     await fs.writeFile(path.join(os.tmpdir(), fileName), JSON.stringify(data, null, 2), 'utf8');
     const driver = DriverManager.run(resource.type, this.store);
