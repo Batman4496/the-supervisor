@@ -1,8 +1,6 @@
 # 👁️ The Supervisor
 
-IM The Supervisor, can i get the taxi numbhaaa?
-DANCE WITH ME AH, COME ON COME ONE.
-DANCE WITH ME AAAH, COME ON COME ON.
+[I'm The Supervisor](https://youtu.be/e7gocWHMnjs?si=2ID8cCpVQAQWJ78q)
 
 ---
 
