@@ -53,5 +53,5 @@ No need to publish the application just run it in test mode.
 ### Installation
 1. Clone the repository:
    ```bash
-   git clone [https://github.com/Batman4496/the-supervisor.git](https://github.com/Batman4496/the-supervisor.git)
+   git clone https://github.com/Batman4496/the-supervisor.git
    cd the-supervisor
