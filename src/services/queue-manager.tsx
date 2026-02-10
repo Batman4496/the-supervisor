@@ -1,5 +1,4 @@
-import { DriverType, QueueItem, DriverResponse, QueueData, UploadType } from "@/types";
-import LocalDriver from "./drivers/local-driver";
+import { QueueItem, QueueData } from "@/types";
 import DBService from "./db-serivce";
 import { BrowserWindow } from "electron";
 import crypto from "crypto";
@@ -7,6 +6,7 @@ import LogService from "./log-service";
 import DriverManager from "./driver-manager";
 import Store from "electron-store";
 import ManifestService from "./manifest-service";
+import path from "path";
 
 class QueueManager {
   mainWindow: BrowserWindow;
@@ -49,11 +49,9 @@ class QueueManager {
   }
 
   remove(id: string) {
-    const item = this.queue.find(q => q.id === id);
-    if (item) {
-      this.finishedQueue.push(item);
-    }
     this.queue = this.queue.filter(q => q.id !== id);
+    this.finishedQueue = this.finishedQueue.filter(q => q.id !== id);
+
     if (id === this.current) {
       this.current = undefined;
     }
@@ -71,6 +69,13 @@ class QueueManager {
       item.cancelled = true;
       this.current = undefined;
       this.mainWindow.webContents.send('queue:sync', [...this.queue, ...this.finishedQueue]);
+
+      this.finishedQueue.push(item);
+      this.queue = this.queue.filter(q => q.id !== id);
+      if (id === this.current) {
+        this.current = undefined;
+      }
+
       this.work();
 
       return true;
@@ -95,38 +100,37 @@ class QueueManager {
       if (item.cancelled) {
         return false;
       }
-
+      let fileId;
       try {
         const res = await driver.upload(fileList[i].name, fileList[i].path, targetPath, fileList[i].type, forward ?? item.data);
 
-        if (res) {
-          let p = await this.db.createFile({
-            name: res.name,
-            resource_id: item.resourceId,
-            type: res.type,
-            path: res.path,
-            extension: res.ext,
-            downloadPath: res.downloadPath,
-            downloaded: res.downloaded,
-            parent_id: parentId
-          });
+        if (!res) continue;
 
-          this.logService.new(`Uploaded - ${fileList[i].name} (${fileList[i].type})`, 'info');
+        fileId = await this.db.createFile({
+          name: res.name,
+          fileId: res.id,
+          resource_id: item.resourceId,
+          type: res.type,
+          path: res.path,
+          extension: res.ext,
+          downloaded: true,
+          downloadPath: fileList[i].path,
+          parent_id: parentId
+        });
 
-          if (fileList[i].type === 'folder') {
-            await this.#upload(item, fileList[i].path, res.path, p, res.forward);
-          }
+        this.logService.new(`Uploaded - ${fileList[i].name} (${fileList[i].type})`, 'info');
 
-        } else {
-          return false;
+        if (fileList[i].type === 'folder') {
+          await this.#upload(item, fileList[i].path, res.path, fileId, res.forward);
         }
+
       } catch (e) {
         if (e instanceof Error) {
-          await this.db.deleteResource(item.resourceId!);
+          if (fileId) await this.db.deleteFile(fileId);
           this.logService.new(e.message, 'error');
         }
 
-        return false;
+        continue;
       }
 
     }
@@ -134,7 +138,7 @@ class QueueManager {
     return true;
   }
 
-  async #download(item: QueueItem, sourcePath: string, targetPath: string, parentId?: number) {
+  async #download(item: QueueItem, sourcePath: string, targetPath: string, parentId?: number, relativePath?: string) {
     if (!item.resourceId) return false;
     const driver = DriverManager.run(item.type, this.store);
 
@@ -144,35 +148,48 @@ class QueueManager {
       return false;
     }
 
+    let fileId;
+
     for (let i = 0; i < fileList.length; ++i) {
       if (item.cancelled) {
         return false;
       }
 
       try {
-          let p = await this.db.createFile({
-            name: fileList[i].name,
-            resource_id: item.resourceId,
-            type: fileList[i].type,
-            path: fileList[i].path,
-            extension: fileList[i].ext,
-            downloaded: false,
-            parent_id: parentId
-          });
+        fileId = await this.db.createFile({
+          name: fileList[i].name,
+          resource_id: item.resourceId,
+          fileId: fileList[i].id,
+          type: fileList[i].type,
+          path: fileList[i].path,
+          extension: fileList[i].ext,
+          downloadPath: sourcePath,
+          relativePath: relativePath,
+          parent_id: parentId
+        });
 
-          this.logService.new(`Download - ${fileList[i].name} (${fileList[i].type})`, 'info');
+        const file = await this.db.getFile(fileId);
 
-          if (fileList[i].type === 'folder') {
-            await this.#download(item, fileList[i].path, fileList[i].path, p);
+        if (fileList[i].type === 'file' && item.data?.downloadFiles) {
+          if (file) {
+            const updated = await driver.download(file, sourcePath);
+            await this.db.updateFile(file.id, updated);
           }
+        }
+
+        this.logService.new(`Downloaded - ${fileList[i].name} (${fileList[i].type})`, 'info');
+
+        if (fileList[i].type === 'folder') {
+          await this.#download(item, path.join(sourcePath, file?.name ?? ''), fileList[i].path, fileId, path.join(relativePath ?? '', fileList[i].name));
+        }
 
       } catch (e) {
         if (e instanceof Error) {
-          await this.db.deleteResource(item.resourceId!);
+          if (fileId) await this.db.deleteFile(fileId);
           this.logService.new(e.message, 'error');
         }
 
-        return false;
+        continue;
       }
 
     }
@@ -219,9 +236,12 @@ class QueueManager {
         if (res) {
           const manifest = new ManifestService(this.db, this.store);
           await manifest.createManifestFromResource(item.resourceId);
+          await this.db.updateResource(item.resourceId, {
+            downloadPath: item.sourcePath
+          });
         }
       }
-      
+
       if (item.queueType === 'download') {
         this.logService.new(`Starting Download - ${item.name} (${item.type})`, 'success');
         res = await this.#download(item, item.sourcePath, item.targetPath);
@@ -240,7 +260,7 @@ class QueueManager {
         item.cancelled = true;
         item.running = false;
       }
-      
+
       if (item.completed && item.cancelled) {
         await this.db.deleteResource(item.resourceId);
         this.logService.new(`Cancelled - ${item.name}`, 'error');
@@ -259,6 +279,7 @@ class QueueManager {
         this.remove(this.current);
       }
       this.mainWindow.webContents.send('error', err);
+      this.mainWindow.webContents.send('queue:sync', [...this.queue, ...this.finishedQueue]);
       return false;
     }
   }

@@ -56,6 +56,36 @@ class DBService {
       throw new Error(`Failed to retrieve resource files from database.`);
     }
   }
+
+  async getFilesTree(resourceId: number, parentId?: number) {
+    let stmt = `SELECT * FROM files WHERE resource_id = ?`;
+    if (!parentId) {
+      stmt += " AND parent_id IS NULL";
+    } else {
+      stmt += " AND parent_id = ?";
+    }
+
+    stmt += " ORDER BY CASE WHEN type = 'folder' THEN 0 ELSE 1 END, type ASC";
+
+    try {
+      const files = await this.db.all<FileRecord[]>(stmt, [resourceId, parentId]);  
+      const out: FileRecord[] = [];
+
+      for (let i = 0; i < files.length; ++i) {
+        if (files[i].type === 'folder') {
+          files[i].files = await this.getFilesTree(files[i].resource_id, files[i].id);
+        }
+
+        out.push(files[i]);
+      }
+
+      return out || [];
+    } catch (error) {
+      console.error(`Error getting resource files with ID ${resourceId}:`, error);
+      throw new Error(`Failed to retrieve resource files from database.`);
+    }
+  }
+
   async searchFiles(resourceId: number, search?: string, limit?: number, offset?: number): Promise<FileRecord[]> {
     let stmt = `SELECT * FROM files WHERE resource_id = ?`;
     let params: any[] = [resourceId];
@@ -125,18 +155,20 @@ class DBService {
   }
 
   async createFile(data: FileData): Promise<number> {
-    const { resource_id, name, downloadPath, downloaded, extension, parent_id, type, path } = data;
+    const { resource_id, name, fileId, downloadPath, downloaded, relativePath, extension, parent_id, type, path } = data;
 
     const stmt = `
-      INSERT INTO files (resource_id, name, downloadPath, downloaded, extension, parent_id, type, path)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO files (resource_id, name, fileId, downloadPath, downloaded, relativePath, extension, parent_id, type, path)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
       resource_id,
       name,
+      fileId || null,
       downloadPath || null,
       downloaded || 0,
+      relativePath || null,
       extension || null,
       parent_id || null,
       type,
@@ -214,7 +246,14 @@ class DBService {
 
   async deleteResource(resourceId: number) {
     const stmt = "DELETE FROM `resources` WHERE `id` = ?";
+    const stmt2 = "DELETE FROM `files` WHERE `resource_id` = ?";
+    await this.db.run(stmt2, [resourceId]);
     return await this.db.run(stmt, [resourceId]);
+  }
+
+  async deleteFile(fileId: number) {
+    const stmt = "DELETE FROM `files` WHERE `id` = ?";
+    return await this.db.run(stmt, [fileId]);
   }
   
   async allResource() {
@@ -242,8 +281,10 @@ class DBService {
           resource_id INTEGER NOT NULL,
           name TEXT NOT NULL,
           path TEXT,
+          fileId TEXT NULL,
           downloadPath TEXT NULL,
           downloaded DEFAULT 0,
+          relativePath TEXT NULL,
           extension TEXT,
           parent_id INTEGER, -- references another file (folder nesting)
           type TEXT CHECK(type IN ('folder', 'file')) NOT NULL,

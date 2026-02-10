@@ -1,4 +1,4 @@
-import { Driver, DriverType, FileRecord, ImportData, Manifest, ManifestData, ManifestFile } from "@/types";
+import { FileRecord, ImportData, Manifest, ManifestFile } from "@/types";
 import DBService from "./db-serivce";
 import crypto from "crypto";
 import fsSync from "fs/promises";
@@ -18,7 +18,7 @@ class ManifestService {
     this.store = store;
   }
 
-  async #getFiles(fileData: FileRecord) {
+  async #getFiles(fileData: FileRecord, rp: string = '') {
     const stmt = await this.db.db.prepare(`SELECT * FROM files WHERE parent_id = ?`);
     await stmt.bind(fileData.id);
     const result = await stmt.all<FileRecord[]>();
@@ -27,13 +27,15 @@ class ManifestService {
 
     return Promise.all(result.map(async (r) => {
       const f: ManifestFile = {
+        id: r.fileId ?? '',
         name: r.name,
         path: r.path ?? '',
+        relativePath: rp,
         type: r.type
       };
 
       if (r.type == 'folder') {
-        const files = await this.#getFiles(r);
+        const files = await this.#getFiles(r, path.join(rp, r.name));
         if (files.length) {
           f.files = files;
         }
@@ -67,12 +69,14 @@ class ManifestService {
 
     const promises = result.map(async (fileData) => {
       const f: ManifestFile = {
+        id: fileData.fileId ?? undefined,
         name: fileData.name,
         path: fileData.path ?? '',
-        type: fileData.type
+        type: fileData.type,
+        relativePath: ''
       };
 
-      const files = await this.#getFiles(fileData);
+      const files = await this.#getFiles(fileData, fileData.name);
 
       if (files.length) {
         f.files = files;
@@ -103,10 +107,11 @@ class ManifestService {
         name: manifest.name,
         description: manifest.description,
         sourcePath: manifest.path,
-        targetPath: manifest.path ?? '',
+        targetPath: data.downloadPath ?? '',
         downloadPath: data.downloadPath ?? '',
         type: manifest.type
       });
+
       const resource = await this.db.getResource(resourceId);
       if (!resource) return false;
       
@@ -127,9 +132,12 @@ class ManifestService {
     for (const file of files) {
       const result = await this.db.createFile({
         resource_id: resourceId,
+        parent_id: parentId,
         name: file.name,
         type: file.type,
-        path: file.path
+        path: file.path,
+        fileId: file.id,
+        relativePath: file.relativePath
       });
 
       const newId = result;

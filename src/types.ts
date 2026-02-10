@@ -51,6 +51,7 @@ export type UploadPartial = {
 }
 
 export type DriverFileData = {
+  id?: string | null,
   name: string,
   path: string,
   type: UploadType,
@@ -61,7 +62,7 @@ export type DriverFileData = {
 };
 
 export interface Driver {
-  getDirectory(path: string): Promise<{ name: string, ext?: string, path: string, type: UploadType }[]>;
+  getDirectory(path: string): Promise<{ name: string, ext?: string, path: string, id?: string | null, type: UploadType }[]>;
   download(file: FileRecord, targetPath: string): Promise<FileRecord>;
   upload(name: string, from: string, to: string, type: UploadType, data?: Record<string, any>): Promise<DriverFileData>;
 }
@@ -105,8 +106,10 @@ export interface ResourceRecord extends ResourceData {
 export interface FileData {
   resource_id: number;
   name: string;
+  fileId?: string | null;
   downloadPath?: string;
   downloaded?: boolean;
+  relativePath?: string | null;
   extension?: string | null;
   parent_id?: number | null;
   path?: string;
@@ -115,6 +118,7 @@ export interface FileData {
 
 export interface FileRecord extends FileData {
   id: number;
+  files?: FileRecord[];
   created_at: string;
   updated_at: string;
 }
@@ -128,8 +132,10 @@ export type LogData = {
 }
 
 export type ManifestFile = {
+  id?: string,
   name: string,
   path: string,
+  relativePath: string,
   type: 'file' | 'folder',
   files?: ManifestFile[]
 };

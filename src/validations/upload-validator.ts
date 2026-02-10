@@ -7,6 +7,12 @@ export const QueueSchema = z.object({
   sourcePath: z.string().min(1),
   targetPath: z.string().min(1),
   type: z.literal(SERVICES.map(s => s.id)),
+
+  // Others
+  data: z.object({
+    downloadFiles: z.boolean().optional()
+  }).optional()
+  
 });
 
 export const ImportSchema = z.object({

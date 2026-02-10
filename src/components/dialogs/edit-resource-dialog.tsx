@@ -12,6 +12,7 @@ import { EditIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '../ui/button';
 import { browse } from '@/lib/utils';
+import { toast } from 'react-toastify';
 
 function EditResourceDialog(props: {
   resource: ResourceRecord
@@ -37,10 +38,11 @@ function EditResourceDialog(props: {
 
   async function changeDownloadPath() {
     const path = await browse();
-    const res = await window.api.resource.changeDownloadPath(resource.id, path)
+    const res = await window.api.resource.changeDownloadPath(resource.id, path);
     if (res) {
+      console.log(path);
       setDownloadPath(path);
-      location.reload();
+      toast.success(`Download path updated: ${path}`);
     }
   }
 
@@ -82,14 +84,11 @@ function EditResourceDialog(props: {
         </div>
 
     
-        {resource.type !== 'local' && (
-          <div className="flex flex-col gap-3">
-            <p>Change Download Path</p>
-            <Input placeholder="Download Path" className="w-full" value={downloadPath} readOnly={true} />
-            <Button type="button" onClick={changeDownloadPath}>Browse</Button>
-          </div>
-        )}
-
+        <div className="flex flex-col gap-3">
+          <p>Change Download Path</p>
+          <Input placeholder="Download Path" className="w-full" value={downloadPath} readOnly={true} />
+          <Button type="button" onClick={changeDownloadPath}>Browse</Button>
+        </div>
         
         <DialogFooter>
 

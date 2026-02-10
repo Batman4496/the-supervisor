@@ -33,7 +33,7 @@ function Mainlayout (props: React.PropsWithChildren) {
             {resource.resources.map((r) => (
               <div className="relative flex flex-row justify-between items-center px-1 md:px-2">
                 <Button variant="link" onClick={() => navigate(`/resource/${r.id}`)}>{r.name}</Button>
-                <div className="absolute h-full flex items-center justify-center right-0 px-2 bg-white">
+                <div className="absolute h-full flex items-center justify-center right-0 px-2 text-black bg-white dark:bg-black dark:text-white">
                   <EditResourceDialog resource={r} />
                 </div>
               </div>

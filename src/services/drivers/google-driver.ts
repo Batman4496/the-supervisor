@@ -5,6 +5,7 @@ import { Driver, FileRecord, UploadType } from "@/types";
 import { google } from 'googleapis';
 import { randomInt } from "crypto";
 import { finished } from "stream/promises";
+import { createRelativeDirectory } from "@/lib/helpers";
 
 class GoogleDriver extends BaseDriver implements Driver {
   #access_token?: string;
@@ -32,8 +33,8 @@ class GoogleDriver extends BaseDriver implements Driver {
     return match ? match[1] : null;
   }
 
-  async getDirectory(path: string) {
-    let folderId = this.extractFolderId(path);
+  async getDirectory(folderPath: string) {
+    let folderId = this.extractFolderId(folderPath);
 
     if (!folderId) return [];
 
@@ -60,8 +61,8 @@ class GoogleDriver extends BaseDriver implements Driver {
         return {
           id: file.id,
           name: file.name!,
-          ext: file.fileExtension ? `${file.fileExtension}` : '',
-          path: (isFolder ? file.webViewLink! : file.id! ) ,
+          ext: file.fileExtension ? `${file.fileExtension.replace('.', '')}` : '',
+          path: file.webViewLink!,
           type: (isFolder ? 'folder' : 'file') as UploadType
         };
       });
@@ -101,12 +102,13 @@ class GoogleDriver extends BaseDriver implements Driver {
         fields: 'id, webViewLink'
       });
 
-      return { name, path: folder.data.webViewLink!, type, forward: { folderId: folder.data.id! } };
+      return { id: folder.data.id, name, path: folder.data.webViewLink!, type, forward: { folderId: folder.data.id! } };
     }
 
     if (type === 'file') {
       const fileMetadata = {
         name: name,
+        fields: 'id, webViewLink',
         parents: [folderId]
       };
 
@@ -119,12 +121,14 @@ class GoogleDriver extends BaseDriver implements Driver {
         const file = await drive.files.create({
           requestBody: fileMetadata,
           media: media,
-          fields: 'id',
+          fields: 'id, webViewLink',
         });
+        
 
         return {
+          id: file.data.id,
           name,
-          path: file.data.id!,
+          path: file.data.webViewLink!,
           type,
           ext: path.extname(name)
         };
@@ -138,14 +142,18 @@ class GoogleDriver extends BaseDriver implements Driver {
   }
 
   async download(file: FileRecord, targetPath: string) {
+    if (!file.fileId) file;
+
     const auth = await this.#auth();
     const drive = google.drive({ version: 'v3', auth });
 
-    targetPath = path.join(targetPath, `${randomInt(10000,99999)}-${file.name}`);
+    await createRelativeDirectory(targetPath);
+
+    targetPath = path.join(targetPath, `${file.name}`);
     const stream = fsSync.createWriteStream(targetPath);
 
     const response = await drive.files.get(
-      { fileId: file.path, alt: 'media'},
+      { fileId: file.fileId as string, alt: 'media'},
       { responseType: 'stream' }
     );
 
@@ -156,7 +164,7 @@ class GoogleDriver extends BaseDriver implements Driver {
     file.downloadPath = targetPath;
     file.downloaded = true;
 
-    return await file;
+    return file;
   }
 
 }

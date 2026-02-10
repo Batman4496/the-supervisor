@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import { QueueItem, ResourceRecord, QueueData, FileSearchData, FileRecord, ManifestData, ImportData } from "@/types";
+import { QueueItem, ResourceRecord, QueueData, FileSearchData, FileRecord, ImportData } from "@/types";
 
 contextBridge.exposeInMainWorld('constants', {
   appName: process.env.APP_NAME

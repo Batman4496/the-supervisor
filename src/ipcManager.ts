@@ -3,10 +3,11 @@ import Store from "electron-store";
 import QueueManager from "@/services/queue-manager";
 import DBService from "@/services/db-serivce";
 import ManifestService from "./services/manifest-service";
-import { assetPath } from "./lib/helpers";
-import { DriverType, FileRecord, FileSearchData, ImportData, ResourceRecord } from "./types";
+import { assetPath, fileExists } from "./lib/helpers";
+import { FileRecord, FileSearchData, ImportData, ResourceRecord } from "./types";
 import { authenticate } from "./services/oauth/GoogleOAuth";
 import DriverManager from "./services/driver-manager";
+import path from "path";
 
 export default function (mainWindow: BrowserWindow, store: Store, database: DBService) {
 
@@ -79,14 +80,25 @@ export default function (mainWindow: BrowserWindow, store: Store, database: DBSe
       downloadPath: downloadPath
     });
     mainWindow.webContents.send('resource:new', await database.allResource());
+    return downloadPath;
   });
  
   ipcMain.handle('file:download', async (_, resource: ResourceRecord, file: FileRecord) => {
     try {
       if (!resource?.downloadPath || !file) return '';
+      const filePath = path.join(resource.downloadPath, file.relativePath ?? '');
+
+      if (await fileExists(path.join(filePath, file.name))) {
+        await database.updateFile(file.id, {
+          downloadPath: path.join(filePath, file.name),
+          downloaded: true
+        });
+
+        return await database.getFile(file.id);
+      }
   
       const driver = DriverManager.run(resource.type, store);
-      const download = await driver.download(file, resource.downloadPath);
+      const download = await driver.download(file, filePath);
       
       await database.updateFile(file.id, {
         downloadPath: file.downloadPath,
@@ -129,17 +141,23 @@ export default function (mainWindow: BrowserWindow, store: Store, database: DBSe
 
   ipcMain.handle('resource:get', async (_, resourceId: number) => {
     const resource = await database.getResource(resourceId);
-    return resource;
+    const files = await database.getFilesTree(resourceId);
+    return {resource, files };
   });
 
   ipcMain.handle('open-folder', (_, path: string) => {
     shell.openPath(path);
   });
 
-  ipcMain.handle('drag:start', (event, path: string) => {
+  ipcMain.handle('drag:start', async (event, path: string) => {
+    if (!await fileExists(path)) {
+      return false;
+    };
+    
     event.sender.startDrag({
       file: path,
       icon: assetPath('file.png')
     });
+    return true;
   });
 }

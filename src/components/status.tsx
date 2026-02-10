@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/accordion';
 import { LogData } from '@/types';
 import { useLog } from '@/providers/log-provider';
+import { X } from 'lucide-react';
 
 function Status() {
   const queue = useQueue();
@@ -69,10 +70,12 @@ function Status() {
             <p>{q.name} <small className="text-slate-500">({q.type})</small></p>
 
             <div className="flex flex-row gap-2">
-              {q.running && !q.completed && <Button variant="destructive" onClick={() => queue.cancel(q.id)}>Cancel (running)</Button>}
-              {!q.running && !q.completed && <Button variant="outline" onClick={() => queue.remove(q.id)}>Remove {!q.cancelled && "(waiting)"}</Button>}
+              {q.running && !q.completed && <Button variant="destructive" onClick={() => queue.cancel(q.id)}>Cancel</Button>}
               {q.completed && !q.cancelled && <Button variant="default">Completed</Button>}
               {q.cancelled && <Button variant="outline">Cancelled</Button>}
+              {!q.running && (
+                <Button variant="outline" onClick={() => queue.remove(q.id)}><X /></Button>
+              )}
             </div>
           </div>  
         ))}

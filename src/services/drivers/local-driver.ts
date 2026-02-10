@@ -3,6 +3,7 @@ import fs from "fs/promises";
 import path from "path";
 import BaseDriver from "./base-driver";
 import { Driver, FileRecord, QueueItem, UploadType } from "@/types";
+import { createRelativeDirectory } from "@/lib/helpers";
 
 class LocalDriver extends BaseDriver implements Driver {
 
@@ -45,6 +46,15 @@ class LocalDriver extends BaseDriver implements Driver {
   }
 
   async download(file: FileRecord, targetPath: string) {
+    if (!file.path) return file;
+
+    await createRelativeDirectory(targetPath);
+
+    await fs.cp(file.path, targetPath);
+    
+    file.downloadPath = targetPath;
+    file.downloaded = true;
+
     return file;
   }
 }

@@ -1,6 +1,6 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useState } from 'react';
 import { ImportData, DownloadData, ResourceData } from '@/types';
 import { SERVICES } from '@/lib/constants';
@@ -13,6 +13,7 @@ import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { Dialog, DialogContent, DialogTrigger } from '../ui/dialog';
 import { Textarea } from '../ui/textarea';
+import { Checkbox } from '../ui/checkbox';
 
 function AddResourceDialog() {
   const [open, setOpen] = useState(false);
@@ -36,7 +37,10 @@ function AddResourceDialog() {
   const downloadForm = useForm({
     resolver: zodResolver(QueueSchema),
     defaultValues: {
-      type: 'google-drive'
+      type: 'google-drive',
+      data: {
+        downloadFiles: false
+      }
     }
   });
 
@@ -245,6 +249,22 @@ function AddResourceDialog() {
                           </div>
                         ))}
                       </RadioGroup>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField 
+                  control={downloadForm.control}
+                  name="data.downloadFiles"
+                  render={({field}: any) => (
+                    <FormItem className="flex flex-row gap-2">
+                      <FormControl>
+                        <Checkbox 
+                          checked={field.value} 
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormLabel>Download the files</FormLabel>
                     </FormItem>
                   )}
                 />
